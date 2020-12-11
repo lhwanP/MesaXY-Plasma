@@ -13,8 +13,10 @@ int fcx=9, fcy=10;
 int stepx=2, dirx=5, distx=20;
 int stepy=3, diry=6, disty=50;
 int quant=2, vel=700; //quantidade de varreduras e velocidade de varredura      
-float tam=2*25.4; // tam (em polegadas) essa nao trocar pelo #DEFINE pois vai ser mudada pelo usuario
-                  // quando colocar os varios tam assim q o usuario por, fazer tam=tam*25.4
+float tam=2*25.4; // tam (em polegadas) essa nao trocar pelo #DEFINE (mas trocar pelo const)
+				//pois vai ser mudada pelo usuario quando colocar os varios tam assim q o 
+				//usuario por, fazer tam=tam*25.4
+				
 float larg=10; // (em mm) largura do feixe de plasma 
 bool sent=HIGH; //HIGH eixo cresce, LOW eixo diminui 
 //(bool ta certo mesmo HIGH nao sendo bool, internamente HIGH é 1 então pode usar bool e fica melhor
@@ -58,27 +60,20 @@ void setup()
 }
 
 void loop() 
-{
-  //so a etapa 1 faz sentido com a funcao botao e led, 
-  //as outras precisa redefinir
-  
+{  
   //********etapa1: iniciar varredura*********
    Serial.println("ligue o plasma e aperte o botao");
-   aperte("ligaPlasma"); //led1: pisca, led2: apagado, até botao ser apertado
-   digitalWrite(led1,LOW); //desliga o led1, caso esteja aceso
+   leds("ligaPlasma"); //led1: pisca, led2: apagado, até botao ser apertado
    
    //********etapa2: varedura iniciada*********
-   Serial.println("varredura iniciada.");
-   digitalWrite(led1,HIGH);
-   digitalWrite(led2,LOW);
+   Serial.println("varredura iniciada."); //led1: aceso, led2: apagado, até a varedura acabar
+   leds("iniciada");
    varredura(tam,larg,quant);
-   //***VARREDURA FALTA COLOCAR NA DIAGONAL***
+   digitalWrite(led1,LOW); //Apaga ambos os leds
+   digitalWrite(led2,LOW); //
   
-  //********etapa3: varedura finalizada*********
-   //Serial.println("varredura finalizada.Desligue o plasma ou coloque nova amostra.");
-   //
-   
-   
+   //***VARREDURA FALTA COLOCAR NA DIAGONAL***
+  Serial.println("varredura finalizada, coloque nova amostra.");  
 }
 
 void fc-inicio()
@@ -97,47 +92,41 @@ void fc-inicio()
  
 }
 
-void aperte(char etapa[])
+void aperte(int *state, bool *aux)
 {
-  int stateLed1=LOW;
-  int stateLed2=LOW;
-  unsigned long anterior=0;
-  bool aux=false;
+	unsigned long anterior=millis();
+
+    if(*state==HIGH)
+	{*state=LOW;}
+	else
+	{*state=HIGH;}
   
-  while (1&&!aux)
-  {
-  if(stateLed1==HIGH)
-  {stateLed1=LOW;}
-  else
-  {stateLed1=HIGH;}
+	//anterior=millis();
   
-  if(stateLed2==HIGH)
-  {stateLed2=LOW;}
-  else
-  {stateLed2=HIGH;}
-  
-  leds(etapa,stateLed1,stateLed2);
-  
-  anterior=millis();
-  
-  while((millis()-anterior <= 300) && !aux)
-  {
-     if (!digitalRead(botao))
-       {  
-     aux=!aux;   
-     }
-  }
-  }
+	while((millis()-anterior <= 300) && !*aux)
+	{
+		if (!digitalRead(botao))
+		{  
+			*aux=!*aux;   
+		}
+	}
 }
 
-void leds(char etapa[],int sl1,int sl2)
+void leds(char etapa[])
 {  
   if(etapa=="ligaPlasma") //esperando ligar plasma
   {
-     //led1: pisca, led2: apagado
-     digitalWrite(led1,sl1);
-     //stateLed2=LOW;
-     digitalWrite(led2,LOW);
+	 int estado=HIGH;
+	 bool aux=false;
+     while(1&&!aux)
+	 {
+		 //led1: pisca, led2: apagado
+		digitalWrite(led1,estado);
+		digitalWrite(led2,LOW);
+		aperte(&estado,&aux);
+	 }
+	 //mantem led aceso pra indicar q o plasma ja foi ligado
+	 digitalWrite(led1,HIGH); 
    
   }else if(etapa=="iniciada") //varredura iniciada
   {
@@ -145,23 +134,12 @@ void leds(char etapa[],int sl1,int sl2)
      digitalWrite(led1,HIGH);
      digitalWrite(led2,LOW);
   
-  }else if(etapa=="finalizada") //varredura finalizada, desligue o plasma
-  {
-   // led1: apagado, led2: pisca  
-   digitalWrite(led1,LOW);
-     digitalWrite(led2,sl2);
-   
-  }else if(etapa=="novaAmostra") //insira nova amostra e ligue o plasma
-  {
-   //led1: pisca, led2: apagado
-     digitalWrite(led1,sl1);
-     digitalWrite(led2,LOW);
   }
 }
 
 void varredura (float tamanho,float feixe,int vezes) //talvez feixe nao precise ser float(so se variar o gas pois isso pode gerar nao inteiro)
 {
- int n=2*((tamanho/feixe)-1)+1;
+ const int n=2*((tamanho/feixe)-1)+1;
  //n=numero de passos,precisa ser int pq é oq vai rodar no for.quando declara como int ele
  // pega so a parte inteira(arredonda pra baixo), entao somar 1 garante q ele vai dar um passo a mais, ou seja,
  // arredonadar pra cima e cobrir a placa toda                             
@@ -206,6 +184,14 @@ void movimenta(float tamanhoX,float tamanhoY,float feixe,int vezes)
 	// int nx=tamanhoX/passo; //quantidadde de passos para o eixo X
 	// int ny=tamanhoY/passo; //quantidadde de passos para o eixo Y
 	
+	
+	
+	const int quant_passosX=10;
+	const int quant_passosY=10;
+	
+	int passoX=tamanhoX/quant_passosX; //quantidadde de passos para o eixo X
+	int passoy=tamanhoY/quant_passosY; //quantidadde de passos para o eixo Y
+	
 	// for (i=0;(i<nx || i<ny);i++)
 	// {
 	  // if (i<nx)
@@ -214,6 +200,17 @@ void movimenta(float tamanhoX,float tamanhoY,float feixe,int vezes)
       // { dy.motorMove(passo,!sent,696); }
 	// }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
