@@ -18,9 +18,9 @@ float tam=2*25.4; // tam (em polegadas) essa nao trocar pelo #DEFINE (mas trocar
 				//usuario por, fazer tam=tam*25.4
 				
 float larg=10; // (em mm) largura do feixe de plasma 
-bool sent=HIGH; //HIGH eixo cresce, LOW eixo diminui 
+bool sent=HIGH; //HIGH eixo cresce, LOW eixo diminui. 
 //(bool ta certo mesmo HIGH nao sendo bool, internamente HIGH é 1 então pode usar bool e fica melhor
-//pq podemos fazer sent=!sent)
+//pq podemos fazer sent=!sent).NAO ALTERAR A MENOS QUE A CONFIGURAÇÃO FÍSICA DOS MOTORES MUDAR
 
 void setup() 
 {
@@ -68,7 +68,7 @@ void loop()
    //********etapa2: varedura iniciada*********
    Serial.println("varredura iniciada."); //led1: aceso, led2: apagado, até a varedura acabar
    leds("iniciada");
-   varredura(tam,larg,quant);
+   varredura();
    digitalWrite(led1,LOW); //Apaga ambos os leds
    digitalWrite(led2,LOW); //
   
@@ -88,30 +88,11 @@ void fc-inicio()
 
  // vai até a posição "inicio"
  dx.motorMove(78.5-tam/2,sent,700); 
- // nao tem dy. pois defini q o Y da origem() e inicio() é o proprio fcy
+ // nao tem dy. pois defini q o Y do fc-inicio() é o proprio fcy
  
 }
 
-void aperte(int *state, bool *aux)
-{
-	unsigned long anterior=millis();
-
-    if(*state==HIGH)
-	{*state=LOW;}
-	else
-	{*state=HIGH;}
-  
-	//anterior=millis();
-  
-	while((millis()-anterior <= 300) && !*aux)
-	{
-		if (!digitalRead(botao))
-		{  
-			*aux=!*aux;   
-		}
-	}
-}
-
+//Função responsavel por acionar os leds durante cada etapa
 void leds(char etapa[])
 {  
   if(etapa=="ligaPlasma") //esperando ligar plasma
@@ -137,71 +118,82 @@ void leds(char etapa[])
   }
 }
 
-void varredura (float tamanho,float feixe,int vezes) //talvez feixe nao precise ser float(so se variar o gas pois isso pode gerar nao inteiro)
+//Fica verificando o botao e só para pra trocar o estado 
+//dos leds quando o tempo de piscar (300ms) acabar
+void aperte(int *state, bool *aux)
 {
- const int n=2*((tamanho/feixe)-1)+1;
+	if(*state==HIGH)
+	{*state=LOW;}
+	else
+	{*state=HIGH;}
+	
+	unsigned long anterior=millis();
+  
+	while((millis()-anterior <= 300) && !*aux)
+	{
+		if (!digitalRead(botao))
+		{  
+			*aux=!*aux;   
+		}
+	}
+}
+
+void varredura () //talvez feixe nao precise ser float(so se variar o gas pois isso pode gerar nao inteiro)
+{
+ const int n=2*((tam/larg)-1)+1;
  //n=numero de passos,precisa ser int pq é oq vai rodar no for.quando declara como int ele
  // pega so a parte inteira(arredonda pra baixo), entao somar 1 garante q ele vai dar um passo a mais, ou seja,
  // arredonadar pra cima e cobrir a placa toda                             
-  dy.motorMove((78.5+tamanho/2),sent,vel);   // isso é a distancia em y da "inicio"
+  dy.motorMove((78.5+tam/2),sent,vel);   // isso é a distancia em y da "inicio"
   delay(100);                                // ate o centro da placa + metade da placa. 
-  dy.motorMove(tamanho,!sent,vel); //volta pro canto superior esquerdo da placa
+  dy.motorMove(tam,!sent,vel); //volta pro canto superior esquerdo da placa
 
   //a logica usada foi q o for interno so faz uma varredura(de um lado a outro da placa)
  // ai se vezes for par ele vai e volta se for impar so vai.Ai so precisa ficar trocando
  //a direcao do X, por isso o sentido=!sentido no segundo for. Note q "sentido" muda mas "sent" nao
   bool sentido=sent;
-  for (int j=0;j<vezes;j++) // responsavel por ir e voltar uma quantidade "vezes"
+  for (int j=0;j<quant;j++) // responsavel por ir e voltar uma quantidade "vezes"
   {
    for (i=0;i<n;i++) // responsavel pela varredura de um lado a outro da placa
    {
-    dx.motorMove((feixe/2),sentido,696); //da um passo pra direita (feixe/2 pra ter sobreposicao)
-    dy.motorMove(tamanho,sent,vel); //corre na vertical pra baixo
+    dx.motorMove((larg/2),sentido,696); //da um passo pra direita (feixe/2 pra ter sobreposicao)
+    dy.motorMove(tam,sent,vel); //corre na vertical pra baixo
     delay(100);
-    dy.motorMove(tamanho,!sent,vel); //corre na vertical pra cima
+    dy.motorMove(tam,!sent,vel); //corre na vertical pra cima
     delay(100);
     Serial.println((n-i));
    }
    sentido=!sentido;
    
   }
-   //#@@$%~.,##*****##%%#%__@)#$#####################@#@#%#$¨$%&%¨*¨&*¨&%¨&%¨&$
-   //AQUIIII FALTA MUDAR  PRA VERIFICAR SE É PAR OU IMPAR
-   if (vezes%2) //vezes é impar
+   
+   //*****Volta para a posição inicio*****
+   if (quant%2) //vezes é impar
    { 
-	 //criar funcao movimenta() pra ir na diagonal
+	 movimenta(tam,(78.5-tam/2),!sent,!sent,696);
+	 //movimenta(tamx,tamy,sentx,senty,velo);
    }
    else  //vezes é par
-   { dy.motorMove((78.5-tam/2),!sent,696); }//sobe ate a posicao "inicio"
+   { dy.motorMove((78.5-tam/2),!sent,696); } //sobe ate a posicao "inicio"
+   
   //NOTA: essa funçao é provisoria pois é so pra gnt testar quantas passadas sao necessarias
   //pra de fato deixar homogeneo. 
 }
 
-void movimenta(float tamanhoX,float tamanhoY,float feixe,int vezes)
+void movimenta(float tamanhoX,float tamanhoY,bool sentX,bool sentY,int velo)
 {
-	// float passo=10; //passo em cada eixo. Escolhido arbitrario,
-					//quanto menor mais fluido o movimento
-	// int nx=tamanhoX/passo; //quantidadde de passos para o eixo X
-	// int ny=tamanhoY/passo; //quantidadde de passos para o eixo Y
+	const int n_passos=10;
+	//const int n_passosY=10;
 	
+	float passoX=tamanhoX/n_passos; //quantidadde de passos para o eixo X
+	float passoy=tamanhoY/n_passos; //quantidadde de passos para o eixo Y
 	
-	
-	const int quant_passosX=10;
-	const int quant_passosY=10;
-	
-	int passoX=tamanhoX/quant_passosX; //quantidadde de passos para o eixo X
-	int passoy=tamanhoY/quant_passosY; //quantidadde de passos para o eixo Y
-	
-	// for (i=0;(i<nx || i<ny);i++)
-	// {
-	  // if (i<nx)
-	  // { dx.motorMove(passo,!sent,696); }
-	  // if (i<ny)
-      // { dy.motorMove(passo,!sent,696); }
-	// }
+	for (i=0;i<n_passos;i++)
+	{
+	   dx.motorMove(passoX,sentX,velX);
+	   dy.motorMove(passoY,sentY,velY);
+	}
 }
-
-
 
 
 
