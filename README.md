@@ -1,2 +1,4 @@
 # MesaXY-Plasma
-MesaXY usada para tratamento com plasma DBD (última atualização Novembro de 2020, código ainda não testado)
+Mesa com dois eixos (xy) usada para melhorar e homogeneizar o tratamento com plasma DBD.
+
+O código 
