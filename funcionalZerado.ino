@@ -19,7 +19,6 @@ int stepy=3, diry=6; //disty=50;  // pinos de controle do número de passos e di
 int quant=20;//quantidade de varreduras
 int vel=700; //velocidade da varredura, quanto menor mais rápido.      
 float tam=.5; // tamanho da amostra (em polegadas) 
-      tam=tam*25.4 //transforma tam para mm
 float larg=10; // largura do feixe de plasma em mm que será usado como medida para fazer a sobreposição dos tratamentos
 bool sent=HIGH; //variavel que indica o sentido do motor
                 //HIGH eixo cresce, LOW eixo diminui, de acordo com a definição escrita nos motores. 
@@ -27,7 +26,9 @@ bool sent=HIGH; //variavel que indica o sentido do motor
 
 void setup() 
 {
-  //configuração dos pinos de controle dos motores
+  tam=tam*25.4; //transforma tam para mm
+      
+   //configuração dos pinos de controle dos motores
   dx.pinConfig(stepx,dirx);
   dy.pinConfig(stepy,diry);
   
