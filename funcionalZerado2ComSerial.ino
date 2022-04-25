@@ -96,6 +96,7 @@ void loop()
       {
         Serial.read(); //esvazia o buffer
         paramSelect();
+        tam=tam*25.4; //transforma tam para mm
         break;
       }else
       {
